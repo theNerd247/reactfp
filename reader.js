@@ -3,15 +3,16 @@ const withConst = (x)     => (f)           => f(x)
 const c         = (...fs)           => (x) => fs.reduce((v, f) => f(v), x)
 const app       = (f)     => (x)           => f(x)
 const flip      = (f)     => (a)    => (b) => f(a)(b)
-const first     = (x)                      => x[0]
-const second    = (x)                      => x[2]
-const pair      = (a,b)                    => [a,b] 
+const fst       = (x)                      => x[0]
+const snd       = (x)                      => x[1]
+const pair      = (a,b)                    => [a,b]
 const curry     = (f)     => (a)    => (b) => f(a, b)
 const uncurry   = (f)     => (a, b)        => f(a)(b)
+const apn       = (ap)    => (f) => (...xs) => xs.reduce((g, x) => ap(g)(x), f)
 
 const Pair =
-  { fmap : (f) => (p) => pair(f(first(p)), second(p))
-  , bimap: (f) => (g) => pair(f(first(p)), g(second(p)))
+  { fmap : (f) => (p) => pair(f(fst(p)), snd(p))
+  , bimap: (f) => (g) => (p) => pair(f(fst(p)), g(snd(p)))
   }
 
 const List =
@@ -26,8 +27,7 @@ const Reader =
   , contramap     : (f) => (r) => c(f,r)
   , bimap         : (f) => (g) => (r) => c(f, r, g)
   , pure          : asConst
-  //ap :: (r -> (a -> b)) -> (r -> a) -> (r -> b)
-  , ap            : (rf) => (r) => (x) => rf(x)(r(x))
+  , ap            : (f) => (r) => (x) => f(x)(r(x))
   }
 
 //State s a ~ (s -> (s, a))
@@ -35,16 +35,38 @@ const State =
   { runState     : app
   , runStateWith : withConst
   , fmap         : (f) => (s) => c(s, Pair.fmap(f))
+  , bimap        : (f) => (g) => (s) => c(s, Pair.bimap(f)(g))
   , pure         : (x) => (s) => pair(x, s)
-  , ap           : (sf) => (s) => c(sf, Reader.bimap(c(first, Pair.fmap), c(second, s)))
+  , ap           : (sf) => (s) => c(sf, Reader.ap(c(fst, Pair.fmap))(c(snd, s)))
   }
 
-/*
- 
-Component a :: a -> JSX
+const plus = (a) => (b) => a + b
 
-Component a -> Component b -> Component c
-f :: c -> a 
-g :: c -> b
+console.log
+  ( Reader.runReaderWith(7)
+    ( apn(Reader.ap)
+      ( Reader.pure(plus))
+      ( Reader.pure(1)
+      , Reader.pure(2)
+      )
+    )
+  )
 
-*/
+console.log(
+  State.runStateWith(7)
+  ( apn(State.ap)
+    ( State.pure(plus))
+    ( State.pure(1)
+    , State.pure(2)
+    )
+  )
+)
+
+console.log(
+  State.runStateWith(7)
+    ( State.bimap
+        (plus(1))
+        (plus(8))
+        (State.pure(3))
+    )
+)
