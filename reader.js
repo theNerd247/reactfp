@@ -1,30 +1,31 @@
-export const id        = (x)                       => x
-export const asConst   = (a)     => (b)            => a
-export const withConst = (x)     => (f)            => f(x)
-export const c         = (...fs)           => (x)  => fs.reduce((v, f) => f(v), x)
-export const flip      = (f)     => (a)    => (b)  => f(a)(b)
-export const fst       = (x)                       => x[0]
-export const snd       = (x)                       => x[1]
-export const pair      = (a,b)                     => [a,b]
-export const curry     = (f)     => (a)    => (b)  => f(a, b)
-export const uncurry   = (f)     => (a, b)         => f(a)(b)
-export const curryp    = (f)     => (a)    => (b)  => f(pair(a,b))
-export const uncurryp  = (f)     => (p)            => f(fst(p))(snd(p))
-export const apn       = (ap)    => (f) => (...xs) => xs.reduce((g, x) => ap(g)(x), f)
+const id        = (x)                       => x
+const asConst   = (a)     => (b)            => a
+const withConst = (x)     => (f)            => f(x)
+const c         = (...fs)           => (x)  => fs.reduce((v, f) => f(v), x)
+const flip      = (f)     => (a)    => (b)  => f(a)(b)
+const fst       = (x)                       => x[0]
+const snd       = (x)                       => x[1]
+const pair      = (a,b)                     => [a,b]
+const curry     = (f)     => (a)    => (b)  => f(a, b)
+const uncurry   = (f)     => (a, b)         => f(a)(b)
+const curryp    = (f)     => (a)    => (b)  => f(pair(a,b))
+const uncurryp  = (f)     => (p)            => f(fst(p))(snd(p))
+const apn       = (ap)    => (f) => (...xs) => xs.reduce((g, x) => ap(g)(x), f)
+const nill      = {}
 
-export const Pair =
+const Pair =
   { fmap : (f) => (p) => pair(f(fst(p)), snd(p))
   , bimap: (f) => (g) => (p) => pair(f(fst(p)), g(snd(p)))
   , gmap : (f) => (p) => pair(fst(p), f(snd(p)))
   }
 
-export const List =
+const List =
   { foldr : (f) => (r)  => (xs) => xs.reduce(f, r)
   , fmap  : (f) => (xs) => xs.map(f)
   }
 
 //Reader r a ~ (r -> a)
-export const Reader =
+const Reader =
   { runReader     : id
   , runReaderWith : withConst
   , fmap          : (f) => (r) => c(r,f)
@@ -36,7 +37,7 @@ export const Reader =
   }
 
 //State s a ~ (s -> (a, s))
-export const State =
+const State =
   { runState     : id
   , runStateWith : withConst
   , fmap         : (f) => (s) => c(s, Pair.fmap(f))
@@ -44,15 +45,10 @@ export const State =
   , pure         : (x) => (s) => pair(x, s)
   , ap           : (sf) => (s) => c(sf, Reader.ap(c(fst, Pair.fmap))(c(snd, s)))
   , bind         : (a) => (f) => c(a, uncurryp(f))
-  //set :: s -> State s ()
-  : set          : (a) => asConst(pair((), a))
-  //ask :: State s s
+  , set          : (a) => asConst(pair(nill, a))
   , ask          : (s) => pair(s, s) 
-  //asking :: (s -> a) -> State s a
   , asking       : (f) => State.fmap(f)(State.ask)
-  //modify :: (s -> t) -> State t ()
   , modify       : (f) => State.bind(State.asking(f))(State.set)
-  //nest :: (b -> a) -> (a -> b -> b) -> State a x -> State c x
   , nest         : (f) => (g) => (sa) => 
       State.bind
         (State.asking(f))
@@ -63,18 +59,18 @@ export const State =
   }
 
 //Coreader s a ~ (a, s)
-export const Writer = (m) =>
-  { runCoreader : apply
+const Writer = (m) =>
+  ({ runCoreader : apply
   , runCoreader : withConst
   , fmap : Pair.fmap
   , pure : (x) => pair(x, m.empty)
   , ap   : (fw) => (r) => withConst (Pair.fmap(fst(fw))(r)) (gmap(m.append(snd(fw))))
   , bind : (a) => (f) => withConst(f(fst(a)))(Pair.gmap(m.append(snd(a))))
-  , tell : (w) => pair((), w)
-  }
+  , tell : (w) => pair(nill, w)
+  })
 
-export const Monoid = (f, m) => 
-  { mconcat = f.foldr m.append m.mempty
+const Monoid = (f, m) => 
+  { mconcat = f.foldr(m.append)(m.mempty)
   }
 
 const plus = (a) => (b) => a + b
