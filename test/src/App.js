@@ -37,6 +37,9 @@ const todolisted = (todolist) => (x) => ({todolist, ...x})
 const newItemText = ({newItemText}) => newItemText || ""
 const newItemTexted = (newItemText) => (x) => ({newItemText, ...x})
 
+const rState = ({withRState}) => withRState
+const rStated = (withRState) => (x) => ({withRState, ...x})
+
 const withItems = State.nest(items)(itemmed)
 const withTodoList = State.nest(todolist)(todolisted)
 const withNewItemText = State.nest(newItemText)(newItemTexted)
@@ -47,39 +50,51 @@ const addNewItem = (newItemText) =>
   State.modify(push(newItemText))
   ))
 
-
 const askingNewItemText = State.asking(newItemText)
 
-const modifyNewItemText = c(newItemTexted, State.modify)
+const showHeader = 
+  Reader.bind(Reader.getting(name))
+    (c(h(3), Reader.pure))
 
-const showHeader = c(name, h(3))
-const showItems  = c(items, ullist)
-
-const showTodoList = 
-  apn(Reader.ap)
-    (JSX.append)
-    (showHeader, showItems)
+const showItems  = 
+  Reader.bind(Reader.getting(items))
+    (c(ullist, Reader.pure))
 
 const reactForm = form({ onSubmit: preventingDefault })
 
-const newItemInput = (withRState) => textfield
-  ("newItem"
-  , withRState(State.asking(newItemText))
-  , "new item"
-  , asInputHandler((_, v) => withRState(modifyNewItemText(v)))
+const showNewItemInput = 
+  Reader.bind(Reader.getting(newItemText))
+  (nit => Reader.bind(Reader.getting(rState))
+  (withRState => Reader.pure(
+    textfield
+      ("newItem"
+      , nit
+      , "new item"
+      , asInputHandler(//(_, v) => withRState(State.modify(newItemTexted(v)))
+          (n) => c(newItemTexted, State.modify, withRState)
+        )
+      )
+  )))
+
+const showNewItemForm = 
+  Reader.pure(
+    reactForm(
+      JSX.mconcat
+        ( showNewItemInput
+        , submit("+")
+        )
+    )
   )
 
-const newItemForm = (withRState) => reactForm(
-  JSX.mconcat
-    ( newItemInput(withRState)
-    , submit("+")
-    )
-)
-
-const homePage =
-  Reader.fmap
-    (JSX.append(h(1)("my lists")))
-    (c(todolist, showTodoList))
+const showHomePage = 
+      apn(Reader.ap)
+        ( JSX.mconcat
+        ( Reader.nest(todolist)(showHeader(n))
+        , (showNewItemForm)
+        , Reader.nest(todolist)(showItems(l))
+        )
+      )
+    ))
 
 class App extends React.Component
 {
@@ -96,7 +111,7 @@ class App extends React.Component
 
   withReactState = (s) => withConst(s(this.state))(x => (this.setState(snd(x)), fst(x)))
 
-  render = () => homePage(this.state)
+  render = () => Reader.runReaderWith(rStated(this.state))(showHomePage)
 }
 
 export default App;

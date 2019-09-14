@@ -36,7 +36,7 @@ export const textfield = (name, value, placeholder, onChange ) => input(
 
 export const ullist = c(mapped(li), ul)
 
-export const asInputHandler = (f) => (evnt) => f(evnt.target.name, evnt.target.value)
+export const asInputHandler = (f) => (evnt) => f(evnt.target.name)(evnt.target.value)
 
 export const preventingDefaultWith = (f) => (evnt) => (evnt.preventDefault(), f(evnt))
 

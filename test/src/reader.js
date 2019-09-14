@@ -40,6 +40,9 @@ export const Reader =
   , bind          : (a) => (f) => c(a, f)
   , get           : id
   , getting       : id
+    //nest :: (s -> r) -> Reader r a -> Reader s a
+  , nest          : (f) => (r) =>
+      Reader.bind(Reader.getting(f))(c(Reader.runReader(r), Reader.pure))
   }
 
 //State s a ~ (s -> (a, s))
